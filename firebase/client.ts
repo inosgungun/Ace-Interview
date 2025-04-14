@@ -5,17 +5,17 @@ import { getFirestore } from "firebase/firestore";
 
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCuUIAodd0EtUNqsXVYG3U5FpmwfpEdF80",
-  authDomain: "aceinterview-f6825.firebaseapp.com",
-  projectId: "aceinterview-f6825",
-  storageBucket: "aceinterview-f6825.firebasestorage.app",
-  messagingSenderId: "243090985631",
-  appId: "1:243090985631:web:cadf6709a5f8c8216d08aa",
-  measurementId: "G-XB9L9ZJBG2",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID!,
 };
 
 
 const app = !getApps.length ? initializeApp(firebaseConfig) : getApp();
 
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+export const db = getFirestore(app)
