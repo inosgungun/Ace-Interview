@@ -111,7 +111,7 @@ const Agent = ({ userName, userId, type }: AgentProps) => {
                 </div>
             )}
 
-            <div className='w-full flex justify-center'>
+            <div className='flex justify-center mt-8'>
                 {callStatus !== 'ACTIVE' ? (
                     <button className='relative btn-call' onClick={handleCall}>
                         <span className={cn("absolute animate-ping rounded-full opacity-75 ",
