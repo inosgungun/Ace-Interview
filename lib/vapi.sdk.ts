@@ -1,3 +1,4 @@
 import Vapi from '@vapi-ai/web';
 
-export const vapi = new Vapi(process.env.NEXT_PUBLIC_VAPI_WEB_TOKEN!)
+// Use the public key for client-side initialization
+export const vapi = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY!);
