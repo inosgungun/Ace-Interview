@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { vapi } from '@/lib/vapi.sdk';
+import { createFeedback } from "@/lib/actions/general.action";
 import { interviewer } from '@/constants';
 
 enum CallStatus {
@@ -19,11 +20,19 @@ interface SavedMessage {
     content: string;
 }
 
-const Agent = ({ userName, userId, type, interviewId, questions }: AgentProps) => {
+const Agent = ({ 
+    userName, 
+    userId, 
+    type, 
+    interviewId,
+    feedbackId,
+    questions
+    }: AgentProps) => {
     const router = useRouter();
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [callStatus, setCallStatus] = useState<CallStatus>(CallStatus.INACTIVE);
     const [messages, setMessages] = useState<SavedMessage[]>([])
+    const [lastMessage, setLastMessage] = useState<string>("");
 
     useEffect(() => {
         const onCallStart = () => setCallStatus(CallStatus.ACTIVE);
@@ -32,21 +41,17 @@ const Agent = ({ userName, userId, type, interviewId, questions }: AgentProps) =
         const onMessage = (message: Message) => {
             if (message.type === 'transcript' && message.transcriptType === 'final') {
                 const newMessage = { role: message.role, content: message.transcript }
+
                 setMessages((prev) => [...prev, newMessage]);
             }
         }
 
-        const onSpeechStart = () => {
-            setIsSpeaking(true);
-        };
-        
-        const onSpeechEnd = () => {
-            setIsSpeaking(false);
-        };
+        const onSpeechStart = () => setIsSpeaking(true);
+        const onSpeechEnd = () => setIsSpeaking(false);
 
         const onError = (error: Error) => {
-            console.log('Error', error);
-        }
+            console.error('Meeting Error:', error);
+        };
 
         vapi.on('call-start', onCallStart);
         vapi.on('call-end', onCallEnd);
@@ -65,36 +70,42 @@ const Agent = ({ userName, userId, type, interviewId, questions }: AgentProps) =
         }
     }, [])
 
-    const handleGenerateFeedback = async (messages: SavedMessage[]) => {
-        console.log('Generate feedback here...');
-
-        const {success, id} = {
-            success: true,
-            id: 'feedback-id'
-        }
-
-        if(success && id) {
-            router.push(`/interview/${interviewId}/feedback`);
-        } else {
-            console.log('Error saving feedbcak');
-            router.push('/');
-        }
-    }
-
     useEffect(() => {
+        if(messages.length > 0) {
+            setLastMessage(messages[messages.length - 1].content);
+        }
+
+        const handleGenerateFeedback = async (messages: SavedMessage[]) => {
+            console.log("handleGenerateFeedback");
+
+            const {success, feedbackId: id} = await createFeedback({
+                interviewId: interviewId!,
+                userId: userId!,
+                transcript: messages,
+                feedbackId,
+            })
+
+            if(success && id) {
+                router.push(`/interview/${interviewId}/feedback`);
+            } else {
+                console.log("Error saving feedback");
+                router.push("/");
+            }
+        }
+
         if(callStatus === CallStatus.FINISHED) {
-            if(type === 'generate'){
-                router.push('/')
+            if(type === 'generate') {
+                router.push('/');
             } else {
                 handleGenerateFeedback(messages);
             }
         }
-    }, [messages, callStatus, type, userId]);
+    }, [callStatus, router, messages, interviewId, feedbackId, type, userId]);
 
     const handleCall = async () => {
         setCallStatus(CallStatus.CONNECTING);
 
-        if(type === 'generate') {
+        if(type === 'generate'){
             await vapi.start(process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!, {
                 variableValues: {
                     username: userName,
@@ -102,12 +113,9 @@ const Agent = ({ userName, userId, type, interviewId, questions }: AgentProps) =
                 }
             })
         } else {
-            let formattedQuestions = '';
-
+            let formattedQuestions = "";
             if(questions) {
-                formattedQuestions = questions
-                    .map((question) => `- ${question}`)
-                    .join('\n');
+                formattedQuestions = questions.map((question) => `- ${question}`).join("/n");
             }
 
             await vapi.start(interviewer, {
@@ -116,7 +124,6 @@ const Agent = ({ userName, userId, type, interviewId, questions }: AgentProps) =
                 }
             })
         }
-        
     }
 
     const handleDisconnect = async () => {
@@ -124,8 +131,6 @@ const Agent = ({ userName, userId, type, interviewId, questions }: AgentProps) =
         vapi.stop();
     }
 
-    const latestMessage = messages[messages.length - 1]?.content;
-    const isCallInactiveOrFinished = callStatus === CallStatus.INACTIVE || callStatus === CallStatus.FINISHED;
 
     return (
         <>
@@ -149,21 +154,21 @@ const Agent = ({ userName, userId, type, interviewId, questions }: AgentProps) =
             {messages.length > 0 && (
                 <div className='transcript-border'>
                     <div className='transcript'>
-                        <p key={latestMessage} className={cn("transition-opacity duration-500 opacity-0", "animate-fadeIn opacity-100")}>
-                            {latestMessage}
+                        <p key={lastMessage} className={cn("transition-opacity duration-500 opacity-0", "animate-fadeIn opacity-100")}>
+                            {lastMessage}
                         </p>
                     </div>
                 </div>
             )}
 
-            <div className='flex justify-center mt-8'>
+            <div className='w-full flex justify-center'>
                 {callStatus !== 'ACTIVE' ? (
                     <button className='relative btn-call' onClick={handleCall}>
                         <span className={cn("absolute animate-ping rounded-full opacity-75 ",
                             callStatus !== 'CONNECTING' && 'hidden')} />
 
-                        <span>
-                            {isCallInactiveOrFinished ? 'Call' : '. . .'}
+                        <span className='relative'>
+                            {callStatus === 'INACTIVE' || callStatus === 'FINISHED' ? 'Call' : '. . .'}
                         </span>
                     </button>
                 ) : (
